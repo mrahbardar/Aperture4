@@ -124,27 +124,23 @@ class pusher_synchrotron {
     photon_angular_dist->reset_after_output(true);
     photon_angular_dist->m_special_output_interval = ph_dist_interval;
 
-    //Stokes parameter 
-    for (int th_bin = 0; th_bin < m_ph_nth; ++th_bin) {
-        value_t th = th_bin * M_PI / (m_ph_nth - 1);
-        for (int phi_bin = 0; phi_bin < m_ph_nphi; ++phi_bin) {
-            value_t phi = phi_bin * 2.0 * M_PI / m_ph_nphi;
-            vec3 x_prime = vec3(-sin(phi), cos(phi), 0.0);
-            vec3 y_prime = vec3(cos(th)*cos(phi), cos(th)*sin(phi), -sin(th));
-            vec3 p = /* calculate the momentum vector */;
-            vec3 B_perp_prime = E + cross(u, B) - dot(u, E) * u; /* perpendicular part of the Lorentz force */;
-            value_t B_perp_prime_mag = B_perp_prime.norm();
-            value_t denominator = std::sqrt(std::pow(B_perp_prime_mag * B_perp_prime_mag + x_prime_mag * x_prime_mag, 2) 
-                                 + std::pow(B_perp_prime_mag * B_perp_prime_mag + y_prime_mag * y_prime_mag, 2));
-            value_t cos_chi = B_perp_prime.dot(y_prime) / denominator;
-            value_t chi = std::acos(cos_chi);
-            value_t Fx = sync_module->sync_curv_emission();
-            value_t Gx = sync_module->sync_curv_emission();
-            value_t I = sqrt(3) * pow(q, 3) * magnitude(B_perp_prime) * Fx / (m * pow(c, 2));
-            value_t Q = sqrt(3) * pow(q, 3) * magnitude(B_perp_prime) * cos(2 * chi) * Gx / (m * pow(c, 2));
-            value_t U = sqrt(3) * pow(q, 3) * magnitude(B_perp_prime) * sin(2 * chi) * Gx / (m * pow(c, 2));
-            }
-    }
+    auto stokes_parameter_I =
+        sim_env().register_data<multi_array_data<value_t, 1>>(
+            "I", omega_bins);
+    I_ptr = stokes_parameter_I->dev_ndptr();
+    stokes_parameter_I->reset_after_outpu(true);
+
+    auto stokes_parameter_Q =
+        sim_env().register_data<multi_array_data<value_t, 3>>(
+            "Q", m_ph_nth, m_ph_nphi, omega_bins);
+    Q_ptr = stokes_parameter_Q->dev_ndptr();
+    stokes_parameter_Q->reset_after_outpu(true);
+
+    auto stokes_parameter_U =
+        sim_env().register_data<multi_array_data<value_t, 3>>(
+            "U", m_ph_nth, m_ph_nphi, omega_bins);
+    U_ptr = stokes_parameter_U->dev_ndptr();
+    stokes_parameter_U->reset_after_outpu(true);
   }
 
   // Inline functions to be called in the particle update loop
@@ -218,6 +214,21 @@ class pusher_synchrotron {
             loss);
       }
     }
+    //Stokes parameter 
+    vec3 x_prime = vec3(-sin(phi), cos(phi), 0.0);
+    vec3 y_prime = vec3(cos(th)*cos(phi), cos(th)*sin(phi), -sin(th));
+    vec3 B_perp_prime = context.E + cross(context.u, context.B) - dot(context.u, context.E) * context.u; /* perpendicular part of the Lorentz force */;
+    value_t B_perp_prime_mag = B_perp_prime.norm();
+    value_t denominator = std::sqrt(std::pow(B_perp_prime_mag * B_perp_prime_mag + x_prime_mag * x_prime_mag, 2) 
+                                 + std::pow(B_perp_prime_mag * B_perp_prime_mag + y_prime_mag * y_prime_mag, 2));
+    value_t cos_chi = B_perp_prime.dot(y_prime) / denominator;
+    value_t chi = std::acos(cos_chi);
+    value_t Fx = sync_module->sync_curv_emission_F();        
+    value_t Gx = sync_module->sync_curv_emission_G();        
+    value_t I =  Fx;        
+    value_t Q =  cos(2 * chi) * Gx;        
+    value_t U =  sin(2 * chi) * Gx;
+  
   }
 
   HD_INLINE vec3 rhs_x(const vec3& u, value_t dt) const {

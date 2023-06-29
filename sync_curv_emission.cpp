@@ -45,7 +45,7 @@ constexpr double Gx(double x) {
 }
 
 
-sync_curv_emission_t::sync_curv_emission_t(MemType type) {
+sync_curv_emission_t_F::sync_curv_emission_t_F(MemType type) {
   m_nx = 2048;
   sim_env().params().get_value("n_sync_bins", m_nx);
 
@@ -70,10 +70,10 @@ sync_curv_emission_t::sync_curv_emission_t(MemType type) {
 
   }
 
-  compute_lookup_table();
+  compute_lookup_table_F();
 }
 
-sync_curv_emission_t::sync_curv_emission_t(MemType type) {
+sync_curv_emission_t_G::sync_curv_emission_t_G(MemType type) {
   m_nx = 2048;
   sim_env().params().get_value("n_sync_bins", m_nx);
 
@@ -98,12 +98,13 @@ sync_curv_emission_t::sync_curv_emission_t(MemType type) {
 
   }
 
-  compute_lookup_table();
+  compute_lookup_table_G();
 }
 
-sync_curv_emission_t::~sync_curv_emission_t() {}
+sync_curv_emission_t_F::~sync_curv_emission_t_F() {}
+sync_curv_emission_t_G::~sync_curv_emission_t_G() {}
 
-void sync_curv_emission_t::compute_lookup_table() {
+void sync_curv_emission_t_F::compute_lookup_table_F() {
   value_t dlogx = m_sync.dlogx;
   for (int n = 0; n < m_nx; n++) {
     value_t logx = m_sync.logx_min + n * dlogx;
@@ -111,18 +112,12 @@ void sync_curv_emission_t::compute_lookup_table() {
     // Times an extra factor of x due to log spacing
     m_Fx_lookup[n] = Fx(x) * x;
 
-    m_Gx_lookup[n] = Gx(x) * x;
-
     // m_Fx_lookup[n] = Fx(x);
     if (n == 0) {
       m_Fx_cumulative[n] = 0.0;
 
-      m_Gx_cumulative[n] = 0.0;
-
     } else {
       m_Fx_cumulative[n] = m_Fx_cumulative[n - 1] + m_Fx_lookup[n];
-
-      m_Gx_cumulative[n] = m_Gx_cumulative[n - 1] + m_Gx_lookup[n];
 
     }
   }
@@ -130,14 +125,39 @@ void sync_curv_emission_t::compute_lookup_table() {
   for (int n = 0; n < m_nx; n++) {
     m_Fx_cumulative[n] /= m_Fx_cumulative[m_nx - 1];
 
-    m_Gx_cumulative[n] /= m_Gx_cumulative[m_nx - 1];
-
   }
 
   m_Fx_cumulative.copy_to_device();
+
+}
+
+void sync_curv_emission_t_G::compute_lookup_table_G() {
+  value_t dlogx = m_sync.dlogx;
+  for (int n = 0; n < m_nx; n++) {
+    value_t logx = m_sync.logx_min + n * dlogx;
+    value_t x = math::exp(logx);
+    // Times an extra factor of x due to log spacing
+    m_Gx_lookup[n] = Gx(x) * x;
+
+    // m_Fx_lookup[n] = Fx(x);
+    if (n == 0) {
+      m_Gx_cumulative[n] = 0.0;
+
+    } else {
+      m_Gx_cumulative[n] = m_Gx_cumulative[n - 1] + m_Gx_lookup[n];
+
+    }
+  }
+
+  for (int n = 0; n < m_nx; n++) {
+
+    m_Gx_cumulative[n] /= m_Gx_cumulative[m_nx - 1];
+
+  }
 
   m_Gx_cumulative.copy_to_device();
 
 }
 
 }
+
