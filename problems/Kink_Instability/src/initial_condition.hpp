@@ -24,14 +24,14 @@ kink_deriven(vector_field<Conf> &B, particle_data_t &ptc,
   //value_t sigma = sim_env().params().get_as<double>("sigma", 4.0);
   value_t R_c = sim_env().params().get_as<double>("Radius", 1.0);
 
-  value_t n_0 = sim_env().params().get_as<double>("background_n", 100.0);
-  value_t n_c = sim_env().params().get_as<double>("core_n", 5000.0);
+  value_t n_0 = sim_env().params().get_as<double>("background_n", 10.0);
+  value_t n_c = sim_env().params().get_as<double>("core_n", 150.0);
   value_t q_e = sim_env().params().get_as<double>("q_e", 1.0);
   value_t ppc = sim_env().params().get_as<double>("ppc", 8.0);
   
 
   
-  value_t B0 = 100.0;
+  value_t B0 = 10.0;
   auto &grid = B.grid();
   auto ext = grid.extent();
 
@@ -56,11 +56,11 @@ kink_deriven(vector_field<Conf> &B, particle_data_t &ptc,
                                       rand_state &state, PtcType type) {
         auto x = x_global[0];
         auto y = x_global[1];
-        value_t kT = -500.0 * std::exp(- 2.0 * std::sqrt(x * x + y * y))
+        value_t kT = -5.0 * std::exp(- 2.0 * std::sqrt(x * x + y * y))
                          * (-39.0 * std::exp(2.0 * std::sqrt(x * x + y * y)) + 5.0 * std::exp(2.0 + 2.0 * std::sqrt(x * x + y * y)) + 5.0 * std::exp(2.0) * (-1 -2.0 * std::sqrt(x * x + y * y) + 2.0 * (x * x + y * y)))  
                                 / (n_0 + (n_c - n_0) / square(std::cosh(2.0 * std::sqrt(x * x + y * y))));
 
-        value_t beta_d =  100.0 * std::exp(1.0 - std::sqrt(x * x + y * y)) * (2.0 - std::sqrt(x * x + y * y))
+        value_t beta_d =  10.0 * std::exp(1.0 - std::sqrt(x * x + y * y)) * (2.0 - std::sqrt(x * x + y * y))
                                 / (n_0 + (n_c - n_0) / square(std::cosh(2.0 * std::sqrt(x * x + y * y))));
 
         vec_t<value_t, 3> u_d = rng_maxwell_juttner_drifting(state, kT, beta_d);

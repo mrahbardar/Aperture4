@@ -2,6 +2,9 @@
 add_aperture_executable(kink "main.cpp")
 add_dependencies(problems kink)
 
+# add_aperture_library(Kink_Instability "initial_condition_FF.cpp")
+add_aperture_executable(kinkFF "mainFF.cpp")
+add_dependencies(problems kinkFF)
 
 # file(GLOB reconnection_src_files *.cu *.hip.cpp)
 # if (use_cuda AND CMAKE_CUDA_COMPILER)

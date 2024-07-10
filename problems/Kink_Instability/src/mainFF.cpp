@@ -36,7 +36,7 @@
 #include "systems/radiative_transfer_impl.hpp"
 #include <iostream>
 
-#include "initial_condition.hpp"
+#include "initial_condition_FF.hpp"
 
 using namespace std;
 using namespace Aperture;
@@ -47,8 +47,8 @@ template <typename Conf>
 void kink_deriven(vector_field<Conf> &B, particle_data_t &ptc,
                      rng_states_t<exec_tags::device> &states);
 
-template class ptc_updater<Config<2>, exec_policy_dynamic,
-                           coord_policy_cartesian_sync_cooling>;
+//template class ptc_updater<Config<2>, exec_policy_dynamic,
+ //                          coord_policy_cartesian_sync_cooling>;
 
 }  // namespace Aperture
 
@@ -65,7 +65,7 @@ main(int argc, char *argv[]) {
   auto &grid = *(env.register_system<grid_t<Conf>>(comm));
   auto pusher =
       env.register_system<ptc_updater<Conf, exec_policy_dynamic,
-                                      coord_policy_cartesian_sync_cooling>>(
+                                      coord_policy_cartesian>>(
           grid, &comm);
   // auto rad = env.register_system<radiative_transfer<
   //     Conf, exec_policy_dynamic, coord_policy_cartesian, IC_radiation_scheme>>(
