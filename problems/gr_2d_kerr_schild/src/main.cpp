@@ -24,9 +24,11 @@
 #include "systems/domain_comm.h"
 #include "systems/field_solver_gr_ks.h"
 #include "systems/gather_tracked_ptc.h"
+#include "systems/compute_moments.h"
 #include "systems/grid_ks.h"
 #include "systems/policies/coord_policy_gr_ks_sph.hpp"
 #include "systems/policies/exec_policy_dynamic.hpp"
+#include "systems/ptc_injector_new.h"
 #include "systems/ptc_updater.h"
 #include "utils/util_functions.h"
 
@@ -37,6 +39,10 @@ namespace Aperture {
 template <typename Conf>
 void initial_vacuum_wald(vector_field<Conf> &B0, vector_field<Conf> &D0,
                          const grid_ks_t<Conf> &grid);
+template <typename Conf>
+void initial_nonrotating_vacuum_wald(vector_field<Conf> &B0,
+                                     vector_field<Conf> &D0,
+                                     const grid_ks_t<Conf> &grid);
 }  // namespace Aperture
 
 using namespace Aperture;
@@ -48,27 +54,27 @@ main(int argc, char *argv[]) {
 
   auto &env = sim_environment::instance(&argc, &argv, true);
 
-  env.params().add("log_level", (int64_t)LogLevel::debug);
+  // env.params().add("log_level", (int64_t)LogLevel::debug);
 
-  // domain_comm<Conf> comm;
+  domain_comm<Conf, exec_policy_dynamic> comm;
   grid_ks_t<Conf> grid;
 
-  auto solver = env.register_system<
-      field_solver<Conf, exec_policy_dynamic, coord_policy_gr_ks_sph>>(grid);
-  // auto pusher = env.register_system<ptc_updater_gr_ks_cu<Conf>>(grid);
   auto pusher = env.register_system<
-      ptc_updater<Conf, exec_policy_dynamic, coord_policy_gr_ks_sph>>(grid);
+      ptc_updater<Conf, exec_policy_dynamic, coord_policy_gr_ks_sph>>(grid, &comm);
+  auto moments = env.register_system<compute_moments<Conf, exec_policy_dynamic>>(grid);
   auto injector = env.register_system<bh_injector<Conf>>(grid);
   auto tracker =
       env.register_system<gather_tracked_ptc<Conf, exec_policy_dynamic>>(grid);
+  auto solver = env.register_system<
+      field_solver<Conf, exec_policy_dynamic, coord_policy_gr_ks_sph>>(grid, &comm);
   auto exporter =
-      env.register_system<data_exporter<Conf, exec_policy_dynamic>>(grid);
+      env.register_system<data_exporter<Conf, exec_policy_dynamic>>(grid, &comm);
 
   env.init();
 
   // Prepare initial condition here
   vector_field<Conf> *B, *D, *B0, *D0;
-  particle_data_t *ptc;
+  // particle_data_t *ptc;
   env.get_data("B0", &B0);
   env.get_data("E0", &D0);
   env.get_data("Bdelta", &B);
@@ -76,37 +82,40 @@ main(int argc, char *argv[]) {
   // env.get_data("particles", &ptc);
 
   initial_vacuum_wald(*B0, *D0, grid);
-  B->copy_from(*B0);
-  D->copy_from(*D0);
+  // initial_nonrotating_vacuum_wald(*B, *D, grid);
+  // B->copy_from(*B0);
+  // D->copy_from(*D0);
+  // initial_vacuum_wald(*B0, *D0, grid);
+  // initial_nonrotating_vacuum_wald(*B, *D, grid);
+  // B->add_by(*B0, -1.0);
+  // D->add_by(*D0, -1.0);
 
-  pusher->fill_multiplicity(5, 1.0, 0.01);
-  // Logger::print_info("number of particles is {}", ptc->number());
-  // vec_t<value_t, 3> x_global(math::log(4.0), M_PI * 0.5 - 0.2, 0.0);
-  // index_t<2> pos;
-  // vec_t<value_t, 3> x;
-  // grid.from_global(x_global, pos, x);
-  // auto ext = grid.extent();
-  // typename Conf::idx_t idx(pos, ext);
-
-  // for (int i = 0; i < 1; i++) {
-  //   ptc->append(exec_tags::device{}, x, {0.57367008, 0.0, 1.565}, idx.linear,
-  //   1000.0,
-  //                   set_ptc_type_flag(0, PtcType::positron));
-  //   // ptc->append(exec_tags::device{}, {0.5f, 0.5f, 0.0f}, , uint32_t cell)
-  // }
-  // CudaSafeCall(cudaDeviceSynchronize());
-
-  // index_t<2> pos(200, 768);
-  // auto ext = grid.extent();
-  // typename Conf::idx_t idx(pos, ext);
-
-  // for (int i = 0; i < 1; i++) {
-  //   ptc->append(exec_tags::device{}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f},
-  //   idx.linear, 1000.0,
-  //                   set_ptc_type_flag(0, PtcType::positron));
-  //   // ptc->append(exec_tags::device{}, {0.5f, 0.5f, 0.0f}, , uint32_t cell)
-  // }
-  // CudaSafeCall(cudaDeviceSynchronize());
+//   pusher->fill_multiplicity(5, 5.0);
+ptc_injector_dynamic<Conf> ptc_inj(grid);
+ptc_inj.inject_pairs(
+    // First function is the injection criterion for each cell. pos is an
+    // index_t<Dim> object marking the cell in the grid. Returns true for
+    // cells that inject and false for cells that do nothing.
+    [] LAMBDA(auto &pos, auto &grid, auto &ext) {
+      return true;
+    },
+    // Second function returns the number of particles injected in each cell.
+    // This includes all species
+    [] LAMBDA(auto &pos, auto &grid, auto &ext) {
+      return 10;
+    },
+    // Third function is the momentum distribution of the injected particles.
+    // Returns a vec_t<value_t, 3> object encoding the 3D momentum of this
+    // particular particle
+    [] LAMBDA(auto &x_global, rand_state &state, PtcType type) {
+      return vec_t<value_t, 3>(0.0, 0.0, 0.0);
+    },
+    // Fourth function is the particle weight, which can depend on the global
+    // coordinate.
+    [] LAMBDA(auto &x_global, PtcType type) {
+      value_t r = grid_ks_t<Conf>::radius(x_global[0]);
+      return 20.0 * math::sin(x_global[1]);
+    });
 
   env.run();
 

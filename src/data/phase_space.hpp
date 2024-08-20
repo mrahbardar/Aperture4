@@ -33,14 +33,18 @@ class phase_space : public data_t {
   const grid_t& m_grid;
 
   extent_t<Conf::dim> m_grid_ext;
+  extent_t<Dim> m_momentum_ext;
   int m_downsample = 16;
   int m_log_scale = false;
   int m_num_bins[Dim];
   value_t m_lower[Dim];
   value_t m_upper[Dim];
 
+  value_t m_dp[Dim];
+
   phase_space(const grid_t& grid, int downsample, const int* num_bins,
               const value_t* lower, const value_t* upper,
+              // const float* lower, const float* upper,
               bool use_log_scale = false, MemType memtype = default_mem_type)
       : m_grid(grid) {
     m_downsample = downsample;
@@ -50,6 +54,8 @@ class phase_space : public data_t {
       m_num_bins[i] = num_bins[i];
       m_lower[i] = lower[i];
       m_upper[i] = upper[i];
+      m_momentum_ext[i] = num_bins[i];
+      m_dp[i] = (upper[i] - lower[i]) / num_bins[i];
     }
 
     auto g_ext = grid.extent_less();
@@ -79,6 +85,28 @@ class phase_space : public data_t {
 #endif
   }
 
+  template <typename F>
+  void set_value(F f) {
+    for (auto idx : data.indices()) {
+      auto pos = idx.get_pos();
+      // Logger::print_info("pos is {}x{}", pos[0], pos[1]);
+      double x0 = m_grid.coord(0, pos[Dim], false);
+      double x1 = (Conf::dim > 1 ?
+        m_grid.coord(1, pos[Dim + 1], false) : 0.0);
+      double x2 = (Conf::dim > 2 ?
+        m_grid.coord(2, pos[Dim + 2], false) : 0.0);
+      double p0 = m_lower[0] + pos[0] * m_dp[0];
+      double p1 = (Dim > 1 ?
+        m_lower[1] + pos[1] * m_dp[1] : 0.0);
+      double p2 = (Dim > 2 ?
+        m_lower[2] + pos[2] * m_dp[2] : 0.0);
+      data[idx] = f(p0, p1, p2, x0, x1, x2);
+    }
+    if (data.mem_type() != MemType::host_only) {
+      data.copy_to_device();
+    }
+  }
+
   void copy_to_host() { data.copy_to_host(); }
 
   void copy_to_device() { data.copy_to_device(); }
@@ -86,8 +114,8 @@ class phase_space : public data_t {
 
 template <typename Conf, int Dim>
 struct host_adapter<phase_space<Conf, Dim>> {
-  typedef ndptr<float, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>> type;
-  typedef ndptr_const<float, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>>
+  typedef ndptr<typename Conf::value_t, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>> type;
+  typedef ndptr_const<typename Conf::value_t, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>>
       const_type;
 
   static inline const_type apply(const phase_space<Conf, Dim>& data) {
@@ -101,8 +129,8 @@ struct host_adapter<phase_space<Conf, Dim>> {
 
 template <typename Conf, int Dim>
 struct gpu_adapter<phase_space<Conf, Dim>> {
-  typedef ndptr<float, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>> type;
-  typedef ndptr_const<float, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>>
+  typedef ndptr<typename Conf::value_t, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>> type;
+  typedef ndptr_const<typename Conf::value_t, Conf::dim + Dim, idx_col_major_t<Conf::dim + Dim>>
       const_type;
 
   static inline const_type apply(const phase_space<Conf, Dim>& data) {

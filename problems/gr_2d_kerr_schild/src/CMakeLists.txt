@@ -37,6 +37,18 @@ add_aperture_executable(grpic "main.cpp")
 target_link_libraries(grpic gr_2d_kerr_schild)
 add_dependencies(problems grpic)
 
+add_aperture_executable(monopole "main_monopole.cpp")
+target_link_libraries(monopole gr_2d_kerr_schild)
+add_dependencies(problems monopole)
+
+add_aperture_executable(gap "main_gap.cpp")
+target_link_libraries(gap gr_2d_kerr_schild)
+add_dependencies(problems gap)
+
+#add_aperture_executable(fluxhold "main_fluxhold.cpp")
+#target_link_libraries(fluxhold gr_2d_kerr_schild)
+#add_dependencies(problems fluxhold)
+
 add_aperture_executable(vacuum_wald "vacuum.cpp")
 target_link_libraries(vacuum_wald gr_2d_kerr_schild)
 add_dependencies(problems vacuum_wald)

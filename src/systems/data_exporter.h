@@ -22,6 +22,7 @@
 #include "data/momentum_space.hpp"
 #include "data/particle_data.h"
 #include "data/phase_space.hpp"
+#include "data/phase_space_vlasov.hpp"
 #include "data/rng_states.h"
 #include "data/scalar_data.hpp"
 #include "data/tracked_ptc.h"
@@ -98,6 +99,9 @@ class data_exporter : public system_t {
   void write(momentum_space<Conf>& data, const std::string& name,
              H5File& datafile, bool snapshot = false);
   template <int N>
+  void write(phase_space_vlasov<Conf, N>& data, const std::string& name,
+             H5File& datafile, bool snapshot = false);
+  template <int N>
   void write(phase_space<Conf, N>& data, const std::string& name,
              H5File& datafile, bool snapshot = false);
   // void write(curand_states_t& data, const std::string& name, H5File&
@@ -145,7 +149,7 @@ class data_exporter : public system_t {
   buffer<uint64_t> tmp_ptc_data64;
   buffer<uint32_t> tmp_ptc_data32;
   /// tmp_grid_data stores the temporary downsampled data for output
-  multi_array<float, Conf::dim> tmp_grid_data;
+  multi_array<output_type, Conf::dim> tmp_grid_data;
   grid_t<Conf> m_output_grid;
 
   /// Sets the directory of all the data files
@@ -157,6 +161,8 @@ class data_exporter : public system_t {
   int m_fld_output_interval = 1;
   int m_snapshot_interval = 0;
   int m_downsample = 1;
+  int m_num_snapshots = 2;
+  int m_current_snapshot = 0;
   // extent_t<Conf::dim> m_local_ext;
   // index_t<Conf::dim> m_local_offset;
   extent_t<Conf::dim> m_global_ext;
@@ -182,7 +188,7 @@ class data_exporter : public system_t {
                          size_t offset);
   void write_multi_array_helper(
       const std::string& name,
-      const multi_array<float, Conf::dim, typename Conf::idx_t>& array,
+      const multi_array<output_type, Conf::dim, typename Conf::idx_t>& array,
       const extent_t<Conf::dim>& global_ext, const index_t<Conf::dim>& offsets,
       H5File& file);
 };
