@@ -1,0 +1,48 @@
+#+TITLE: TODOs in the code
+
+
+* DONE Domain Communications
+** [X] Communicate particles
+** [X] Communicate fields
+
+* TODO Data Export
+** [ ] Write tracked particles
+Should I put tracked particle data struct under the main particle data, or in
+the data exporter class? Or in the ~particle_data_t~ class?
+** [ ] How to make it easier to add more diagnostics?
+* TODO Snapshot and Restart
+** [X] How to specify which data components need to be saved in a snapshot?
+Added an ~include_in_snapshot~ option in ~data_t~ interface. Anything that needs
+to be included in the snapshot will need to explicitly declare this option.
+
+Basically, data output is "opt-out", and snapshot is "opt-in".
+
+However, particle snapshot is yet to be implemented.
+** [ ] Figure out a way to deal with xmf interaction with restarts
+* TODO Implement various physical processes
+** [ ] Instant pair production according to a threshold
+** [ ] Curvature radiation
+** [X] Synchrotron cooling
+** [ ] Resonant scattering
+Partially done. Need to add a reliable way to extract the outgoing photon
+direction from scattering events, and deposit it to the photon flux buffer.
+** [X] Simple gravity force
+** [ ] ICS scattering with arbitrary background
+** [ ] Triplet pair production
+* TODO Figure out a way to streamline setting up a new problem
+** [X] How to change pusher behavior?
+Partial answer: inherit the appropriate ptc_updater class then redefine the push
+method. Also the ~push~ method is abstracted to contain a more succinct
+implementation function that will be overridden by new pushers.
+** [X] How to change radiative transfer behavior?
+Partial answer: write a custom impl class for radiation then instantiate the
+~radiative_transfer~ class with it.
+
+A more elaborate scheme right now is to separate the implementation of different
+functions in different reusable classes. This way one can mix and match between
+different schemes.
+* More general, how to make system interfaces even simpler?
+* TODO Added a dry run mode where one can see all the default parameters
+* TODO An idea for handling Z-order size is to always pad the arrays to power of 2
+A lot of indexing has to change accordingly. For example, grid.dims won't be
+enough to identify the extent of the array in memory.
